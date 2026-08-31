@@ -25,6 +25,7 @@ from transformers import (
     is_torch_available,
 )
 from transformers.testing_utils import (
+    cleanup,
     require_torch,
     require_torch_accelerator,
     slow,
@@ -287,10 +288,11 @@ class DeepseekVLHybridIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.model_id = "deepseek-community/deepseek-vl-7b-chat"
 
+    def tearDown(self):
+        cleanup(torch_device, gc_collect=True)
+
     def test_model_text_generation(self):
-        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
-            self.model_id, dtype="auto", device_map="auto"
-        )
+        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(self.model_id, dtype="auto")
         model.to(torch_device)
         model.eval()
         processor = AutoProcessor.from_pretrained(self.model_id)
@@ -322,9 +324,7 @@ class DeepseekVLHybridIntegrationTest(unittest.TestCase):
         )
 
     def test_model_text_generation_batched(self):
-        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
-            self.model_id, dtype="auto", device_map="auto"
-        )
+        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(self.model_id, dtype="auto")
         model.to(torch_device)
         model.eval()
         processor = AutoProcessor.from_pretrained(self.model_id)
@@ -370,9 +370,7 @@ class DeepseekVLHybridIntegrationTest(unittest.TestCase):
         self.assertEqual(EXPECTED_TEXT, text)
 
     def test_model_text_generation_with_multi_image(self):
-        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
-            self.model_id, dtype="auto", device_map="auto"
-        )
+        model = DeepseekVLHybridForConditionalGeneration.from_pretrained(self.model_id, dtype="auto")
         model.to(torch_device)
         model.eval()
         processor = AutoProcessor.from_pretrained(self.model_id)
