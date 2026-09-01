@@ -25,6 +25,7 @@ from transformers import (
     is_torch_available,
 )
 from transformers.testing_utils import (
+    cleanup,
     require_torch,
     require_torch_accelerator,
     slow,
@@ -286,6 +287,9 @@ class DeepseekVLHybridModelTest(ModelTesterMixin, GenerationTesterMixin, Pipelin
 class DeepseekVLHybridIntegrationTest(unittest.TestCase):
     def setUp(self):
         self.model_id = "deepseek-community/deepseek-vl-7b-chat"
+
+    def tearDown(self):
+        cleanup(torch_device, gc_collect=True)
 
     def test_model_text_generation(self):
         model = DeepseekVLHybridForConditionalGeneration.from_pretrained(
