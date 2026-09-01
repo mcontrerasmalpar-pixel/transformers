@@ -1458,6 +1458,7 @@ class Kosmos2Model(Kosmos2PreTrainedModel):
             image_features = self.get_image_features(
                 pixel_values, interpolate_pos_encoding=interpolate_pos_encoding, return_dict=True, **kwargs
             )
+            vision_model_output = image_features
             image_embeds = image_features.pooler_output
             projection_attentions = image_features.projection_attentions
 
