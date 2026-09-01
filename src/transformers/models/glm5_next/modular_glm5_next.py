@@ -1024,12 +1024,39 @@ class Glm5NextTextIndexer(GlmMoeDsaIndexer):
 
 class Glm5NextTextAttention(GlmMoeDsaAttention):
     def __init__(self, config: Glm5NextTextConfig, layer_idx: int):
-        super().__init__(config, layer_idx)
-        self.scaling = self.qk_head_dim ** (-0.5)
-        self.q_a_layernorm = (
-            Glm5NextTextRMSNorm(config.q_lora_rank, eps=config.rms_norm_eps) if self.q_lora_rank is not None else None
+        nn.Module.__init__(self)
+        self.config = config
+        self.layer_idx = layer_idx
+        self.attention_dropout = config.attention_dropout
+        self.hidden_size = config.hidden_size
+        self.num_heads = config.num_attention_heads
+
+        self.q_lora_rank = config.q_lora_rank
+        self.qk_rope_head_dim = config.qk_rope_head_dim
+        self.kv_lora_rank = config.kv_lora_rank
+        self.v_head_dim = config.v_head_dim
+        self.qk_nope_head_dim = config.qk_nope_head_dim
+        self.qk_head_dim = config.qk_nope_head_dim + config.qk_rope_head_dim
+        self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
+
+        self.is_causal = True
+
+        self.q_a_proj = nn.Linear(self.hidden_size, self.q_lora_rank, bias=config.attention_bias)
+        self.q_a_layernorm = Glm5NextTextRMSNorm(self.q_lora_rank, eps=config.rms_norm_eps)
+        self.q_b_proj = nn.Linear(self.q_lora_rank, self.num_heads * self.qk_head_dim, bias=False)
+
+        self.kv_a_proj_with_mqa = nn.Linear(
+            self.hidden_size, config.kv_lora_rank + config.qk_rope_head_dim, bias=config.attention_bias
         )
         self.kv_a_layernorm = Glm5NextTextRMSNorm(self.kv_lora_rank, eps=config.rms_norm_eps)
+        self.kv_b_proj = nn.Linear(
+            config.kv_lora_rank, self.num_heads * (self.qk_nope_head_dim + self.v_head_dim), bias=False
+        )
+
+        self.o_proj = nn.Linear(self.num_heads * self.v_head_dim, self.hidden_size, bias=config.attention_bias)
+        self.scaling = self.qk_head_dim ** (-0.5)
+        # Refer: https://arxiv.org/abs/2603.12201 for more details.
+        self.skip_topk = config.indexer_types[layer_idx] == "shared"
         self.indexer = None if self.skip_topk else Glm5NextTextIndexer(config, layer_idx)
         self.next_skip_topk = (
             not self.skip_topk and config.indexer_types[min(layer_idx + 1, len(config.indexer_types) - 1)] == "shared"
